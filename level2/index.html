@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mini Maze</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+            touch-action: manipulation;
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 1.2rem;
+            margin: 5px 0;
+        }
+        
+        #game-container {
+            position: relative;
+            margin: 5px 0;
+        }
+        
+        #maze {
+            border: 2px solid #333;
+            background-color: #fff;
+            width: 250px;
+            height: 250px;
+        }
+        
+        #controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 5px;
+        }
+        
+        .arrow-row {
+            display: flex;
+            justify-content: center;
+        }
+        
+        .arrow-btn {
+            width: 40px;
+            height: 40px;
+            margin: 2px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+        
+        .arrow-btn:hover {
+            background-color: #45a049;
+        }
+        
+        .arrow-btn:active {
+            background-color: #3e8e41;
+        }
+        
+        #message {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #333;
+            height: 1rem;
+            text-align: center;
+        }
+        
+        .wall {
+            background-color: #333;
+            position: absolute;
+        }
+        
+        #character {
+            position: absolute;
+            transition: all 0.15s ease;
+            z-index: 10;
+            width: 20px;
+            height: 20px;
+        }
+        
+        .goal {
+    background-color: rgb(232, 197, 0);
+    position: absolute;
+    border-radius: 50%;
+    border: 3px solid black;
+}
+    </style>
+</head>
+<body>
+    <a href="https://noahturns6.github.io/">
+       Back to Home Page
+    </a>
+    <h1>Noah's Super Cool Maze</h1>
+    <h1 style="background-color: rgb(255, 221, 136);
+     font-family:'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+     font-size: 30px;">
+        Level 2
+    </h1>
+    <div id="message">
+
+Help Noah Find The Gold Coin
+
+
+    </div>
+    <div id="game-container">
+        <canvas id="maze" width="250" height="250"></canvas>
+        <img id="character" 
+        
+        src="https://i.ibb.co/rGTgsjmX/Untitled42.png" 
+        
+        style="display: none;">
+        
+        
+        <div id="goal" class="goal" style="display: none;"></div>
+    </div>
+    
+    <div id="controls">
+        <div class="arrow-row">
+            <button class="arrow-btn" id="up">↑</button>
+        </div>
+        <div class="arrow-row">
+            <button class="arrow-btn" id="left">←</button>
+            <button class="arrow-btn" id="down">↓</button>
+            <button class="arrow-btn" id="right">→</button>
+        </div>
+    </div>
+    
+  
+    
+    <script>
+        // Game elements
+        const canvas = document.getElementById('maze');
+        const ctx = canvas.getContext('2d');
+        const character = document.getElementById('character');
+        const goal = document.getElementById('goal');
+        const message = document.getElementById('message');
+        
+        // Movement buttons
+        const upBtn = document.getElementById('up');
+        const downBtn = document.getElementById('down');
+        const leftBtn = document.getElementById('left');
+        const rightBtn = document.getElementById('right');
+        
+        // Game state
+        const cellSize = 25;
+        const characterSize = 20;
+        const walls = [];
+        let characterX = 1;
+        let characterY = 1;
+        let gameWon = false;
+        
+        // Maze layout (1 = wall, 0 = path, G = goal)
+        const mazeLayout = [
+            [1,1,1,1,1,1,1,1,1,1],
+            [1,0,1,'G',0,0,0,0,0,1],
+            [1,0,1,1,1,1,1,1,0,1],
+            [1,0,1,0,0,0,1,0,0,1],
+            [1,0,0,0,1,0,1,0,1,1],
+            [1,1,1,1,1,0,1,0,0,1],
+            [1,0,0,0,0,0,1,1,0,1],
+            [1,0,1,1,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1]
+            
+        ];
+        
+        // Initialize the game
+        function initGame() {
+            // Clear previous walls
+            walls.length = 0;
+            
+            // Draw maze and set up walls/goal
+            for (let y = 0; y < mazeLayout.length; y++) {
+                for (let x = 0; x < mazeLayout[y].length; x++) {
+                    if (mazeLayout[y][x] === 1) {
+                        // It's a wall
+                        walls.push({x, y});
+                    } else if (mazeLayout[y][x] === 'G') {
+                        // It's the goal
+                        goal.style.width = `${cellSize - 5}px`;
+                        goal.style.height = `${cellSize - 5}px`;
+                        goal.style.left = `${x * cellSize + 2.5}px`;
+                        goal.style.top = `${y * cellSize + 2.5}px`;
+                        goal.style.display = 'block';
+                    }
+                }
+            }
+            
+            // Position character
+            characterX = 1;
+            characterY = 1;
+            updateCharacterPosition();
+            character.style.display = 'block';
+            
+            // Reset game state
+            gameWon = false;
+            message.textContent = 'Help Noah Find The Gold Coin';
+            
+            // Draw the maze
+            drawMaze();
+        }
+        
+        // Draw the maze on canvas
+        function drawMaze() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#333';
+            
+            // Draw walls
+            walls.forEach(wall => {
+                ctx.fillRect(
+                    wall.x * cellSize, 
+                    wall.y * cellSize, 
+                    cellSize, 
+                    cellSize
+                );
+            });
+        }
+        
+      // Update character position
+function updateCharacterPosition() {
+    character.style.left = `${characterX * cellSize + (cellSize - characterSize) / 2}px`;
+    character.style.top = `${characterY * cellSize + (cellSize - characterSize) / 2}px`;
+    
+    // Check if reached goal
+    if (mazeLayout[characterY][characterX] === 'G' && !gameWon) {
+        gameWon = true;
+        message.innerHTML = 'You won! <a href="https://noahturns6.github.io/level3" style="color: #4CAF50; text-decoration: none; font-weight: bold;">Next Level →</a>';
+    }
+}
+        
+        // Check if a position is valid (not a wall)
+        function isValidPosition(x, y) {
+            if (x < 0 || y < 0 || x >= mazeLayout[0].length || y >= mazeLayout.length) {
+                return false;
+            }
+            return mazeLayout[y][x] !== 1;
+        }
+        
+        // Movement functions
+        function moveUp() {
+            if (!gameWon && isValidPosition(characterX, characterY - 1)) {
+                characterY--;
+                updateCharacterPosition();
+            }
+        }
+        
+        function moveDown() {
+            if (!gameWon && isValidPosition(characterX, characterY + 1)) {
+                characterY++;
+                updateCharacterPosition();
+            }
+        }
+        
+        function moveLeft() {
+            if (!gameWon && isValidPosition(characterX - 1, characterY)) {
+                characterX--;
+                updateCharacterPosition();
+            }
+        }
+        
+        function moveRight() {
+            if (!gameWon && isValidPosition(characterX + 1, characterY)) {
+                characterX++;
+                updateCharacterPosition();
+            }
+        }
+        
+        // Event listeners for buttons
+        upBtn.addEventListener('click', moveUp);
+        downBtn.addEventListener('click', moveDown);
+        leftBtn.addEventListener('click', moveLeft);
+        rightBtn.addEventListener('click', moveRight);
+        
+        // Touch event handlers to prevent delay
+        upBtn.addEventListener('touchstart', (e) => { e.preventDefault(); moveUp(); });
+        downBtn.addEventListener('touchstart', (e) => { e.preventDefault(); moveDown(); });
+        leftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); moveLeft(); });
+        rightBtn.addEventListener('touchstart', (e) => { e.preventDefault(); moveRight(); });
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (gameWon) return;
+            
+            switch(e.key) {
+                case 'ArrowUp': case 'w': case 'W':
+                    moveUp();
+                    break;
+                case 'ArrowDown': case 's': case 'S':
+                    moveDown();
+                    break;
+                case 'ArrowLeft': case 'a': case 'A':
+                    moveLeft();
+                    break;
+                case 'ArrowRight': case 'd': case 'D':
+                    moveRight();
+                    break;
+            }
+        });
+        
+        // Start the game
+        initGame();
+    </script>
+</body>
+</html>
